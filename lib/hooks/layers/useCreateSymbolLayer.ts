@@ -9,94 +9,82 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = SymbolLayer
 type Layout = SymbolLayout
 type Paint = SymbolPaint
 
-const paintDefault: Paint = {
-  'icon-color': '#000000',
-  'icon-color-brightness-max': 1,
-  'icon-color-brightness-min': 0,
-  'icon-color-contrast': 0,
-  'icon-color-saturation': 0,
-  'icon-emissive-strength': 1,
-  'icon-halo-blur': 0,
-  'icon-halo-color': 'rgba(0, 0, 0, 0)',
-  'icon-halo-width': 0,
-  'icon-opacity': 1,
-  'icon-translate': [0, 0],
-  'icon-translate-anchor': 'map',
-  'icon-image-cross-fade': 0,
-  'text-color': '#000000',
-  'text-emissive-strength': 1,
-  'text-halo-blur': 0,
-  'text-halo-color': 'rgba(0, 0, 0, 0)',
-  'text-halo-width': 0,
-  'text-opacity': 1,
-  'text-translate': [0, 0],
-  'text-translate-anchor': 'map'
-}
+const paintKeys: (keyof Paint)[] = [
+  'icon-color',
+  'icon-color-brightness-max',
+  'icon-color-brightness-min',
+  'icon-color-contrast',
+  'icon-color-saturation',
+  'icon-emissive-strength',
+  'icon-halo-blur',
+  'icon-halo-color',
+  'icon-halo-width',
+  'icon-opacity',
+  'icon-translate',
+  'icon-translate-anchor',
+  'icon-image-cross-fade',
+  'text-color',
+  'text-emissive-strength',
+  'text-halo-blur',
+  'text-halo-color',
+  'text-halo-width',
+  'text-opacity',
+  'text-translate',
+  'text-translate-anchor'
+]
 
-const layoutDefault: Layout = {
-  'icon-allow-overlap': false,
-  'icon-anchor': 'center',
-  'icon-ignore-placement': false,
-  'icon-image': undefined,
-  'icon-keep-upright': false,
-  'icon-offset': [0, 0],
-  'icon-optional': false,
-  'icon-padding': 2,
-  'icon-pitch-alignment': 'auto',
-  'icon-rotate': 0,
-  'icon-rotation-alignment': 'auto',
-  'icon-size': 1,
-  'icon-text-fit': 'none',
-  'icon-text-fit-padding': [0, 0, 0, 0],
-  'symbol-avoid-edges': false,
-  'symbol-placement': 'point',
-  'symbol-sort-key': undefined,
-  'symbol-spacing': 250,
-  'symbol-z-elevate': false,
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  'symbol-z-order': 'auto',
-  'text-allow-overlap': false,
-  'text-anchor': 'center',
-  'text-field': '',
-  'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-  'text-ignore-placement': false,
-  'text-justify': 'center',
-  'text-keep-upright': true,
-  'text-letter-spacing': 0,
-  'text-line-height': 1.2,
-  'text-max-angle': 45,
-  'text-max-width': 10,
-  'text-offset': [0, 0],
-  'text-optional': false,
-  'text-padding': 2,
-  'text-pitch-alignment': 'auto',
-  'text-radial-offset': 0,
-  'text-rotate': 0,
-  'text-rotation-alignment': 'auto',
-  'text-size': 16,
-  'text-transform': 'none',
-  'text-variable-anchor': [
-    'center',
-    'left',
-    'right',
-    'top',
-    'bottom',
-    'top-left',
-    'top-right',
-    'bottom-left',
-    'bottom-right'
-  ],
-  'text-writing-mode': ['horizontal'],
-  visibility: 'visible'
-}
+const layoutKeys: (keyof Layout)[] = [
+  'icon-allow-overlap',
+  'icon-anchor',
+  'icon-ignore-placement',
+  'icon-image',
+  'icon-keep-upright',
+  'icon-offset',
+  'icon-optional',
+  'icon-padding',
+  'icon-pitch-alignment',
+  'icon-rotate',
+  'icon-rotation-alignment',
+  'icon-size',
+  'icon-text-fit',
+  'icon-text-fit-padding',
+  'symbol-avoid-edges',
+  'symbol-placement',
+  'symbol-sort-key',
+  'symbol-spacing',
+  'symbol-z-elevate',
+  'symbol-z-order',
+  'text-allow-overlap',
+  'text-anchor',
+  'text-field',
+  'text-font',
+  'text-ignore-placement',
+  'text-justify',
+  'text-keep-upright',
+  'text-letter-spacing',
+  'text-line-height',
+  'text-max-angle',
+  'text-max-width',
+  'text-offset',
+  'text-optional',
+  'text-padding',
+  'text-pitch-alignment',
+  'text-radial-offset',
+  'text-rotate',
+  'text-rotation-alignment',
+  'text-size',
+  'text-transform',
+  'text-variable-anchor',
+  'text-writing-mode',
+  'visibility'
+]
 
 interface CreateSymbolLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -117,8 +105,8 @@ interface CreateSymbolLayerProps {
 export function useCreateSymbolLayer(props: CreateSymbolLayerProps) {
   const layerType = MapboxLayerType.Symbol
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -136,23 +124,22 @@ export function useCreateSymbolLayer(props: CreateSymbolLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: SymbolLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

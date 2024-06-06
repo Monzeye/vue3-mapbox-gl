@@ -9,28 +9,25 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = FillLayer
 type Layout = FillLayout
 type Paint = FillPaint
 
-const paintDefault: Paint = {
-  'fill-antialias': true,
-  'fill-color': '#000000',
-  'fill-emissive-strength': 0,
-  'fill-opacity': 1,
-  'fill-outline-color': undefined,
-  'fill-pattern': undefined,
-  'fill-translate': [0, 0],
-  'fill-translate-anchor': 'map'
-}
+const paintKeys: (keyof Paint)[] = [
+  'fill-antialias',
+  'fill-color',
+  'fill-emissive-strength',
+  'fill-opacity',
+  'fill-outline-color',
+  'fill-pattern',
+  'fill-translate',
+  'fill-translate-anchor'
+]
 
-const layoutDefault: Layout = {
-  'fill-sort-key': 0,
-  visibility: 'visible'
-}
+const layoutKeys: (keyof Layout)[] = ['fill-sort-key', 'visibility']
 
 interface CreateFillLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -51,8 +48,8 @@ interface CreateFillLayerProps {
 export function useCreateFillLayer(props: CreateFillLayerProps) {
   const layerType = MapboxLayerType.Fill
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -70,23 +67,22 @@ export function useCreateFillLayer(props: CreateFillLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: FillLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

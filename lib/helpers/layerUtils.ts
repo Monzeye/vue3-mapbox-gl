@@ -1,13 +1,9 @@
-export function findLayerDefaultStyleSetVal<
+export function filterStylePropertiesByKeys<
   T extends Record<string, any> = any
->(obj: T, defaultVal: T) {
-  return Object.keys(obj).reduce(
-    (style, key) => {
-      if (Reflect.has(defaultVal, key)) {
-        style[key] = obj[key]
-      }
-      return style
-    },
-    {} as Record<string, any>
-  )
+>(style: Record<string, any>, keys: (keyof T)[]): T {
+  return Object.keys(style).reduce((newStyle, key) => {
+    return keys.includes(key as keyof T)
+      ? { ...newStyle, [key]: style[key] }
+      : newStyle
+  }, {} as T)
 }

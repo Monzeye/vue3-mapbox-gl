@@ -9,26 +9,24 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = HillshadeLayer
 type Layout = HillshadeLayout
 type Paint = HillshadePaint
 
-const paintDefault: Paint = {
-  'hillshade-accent-color': '#000000',
-  'hillshade-emissive-strength': 0,
-  'hillshade-exaggeration': 0.5,
-  'hillshade-highlight-color': '#fff',
-  'hillshade-illumination-anchor': 'viewport',
-  'hillshade-illumination-direction': 335,
-  'hillshade-shadow-color': '#000000'
-}
+const paintKeys: (keyof Paint)[] = [
+  'hillshade-accent-color',
+  'hillshade-emissive-strength',
+  'hillshade-exaggeration',
+  'hillshade-highlight-color',
+  'hillshade-illumination-anchor',
+  'hillshade-illumination-direction',
+  'hillshade-shadow-color'
+]
 
-const layoutDefault: Layout = {
-  visibility: 'visible'
-}
+const layoutKeys: (keyof Layout)[] = ['visibility']
 
 interface CreateHillshadeLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -49,8 +47,8 @@ interface CreateHillshadeLayerProps {
 export function useCreateHillshadeLayer(props: CreateHillshadeLayerProps) {
   const layerType = MapboxLayerType.Hillshade
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -68,23 +66,22 @@ export function useCreateHillshadeLayer(props: CreateHillshadeLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: HillshadeLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

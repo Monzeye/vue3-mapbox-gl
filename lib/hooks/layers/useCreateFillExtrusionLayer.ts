@@ -9,39 +9,36 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = FillExtrusionLayer
 type Layout = FillExtrusionLayout
 type Paint = FillExtrusionPaint
 
-const paintDefault: Paint = {
-  'fill-extrusion-ambient-occlusion-ground-attenuation': 0.69,
-  'fill-extrusion-ambient-occlusion-ground-radius': 3,
-  'fill-extrusion-ambient-occlusion-wall-radius': 3,
-  'fill-extrusion-base': 0,
-  'fill-extrusion-color': '#000000',
-  'fill-extrusion-cutoff-fade-range': 0,
-  'fill-extrusion-emissive-strength': 0,
-  'fill-extrusion-flood-light-color': '#ffffff',
-  'fill-extrusion-flood-light-ground-attenuation': 0.69,
-  'fill-extrusion-flood-light-ground-radius': 0,
-  'fill-extrusion-flood-light-intensity': 0,
-  'fill-extrusion-flood-light-wall-radius': 0,
-  'fill-extrusion-height': 0,
-  'fill-extrusion-opacity': 1,
-  'fill-extrusion-pattern': undefined,
-  'fill-extrusion-rounded-roof': true,
-  'fill-extrusion-translate': [0, 0],
-  'fill-extrusion-translate-anchor': 'map',
-  'fill-extrusion-vertical-gradient': true,
-  'fill-extrusion-vertical-scale': 0
-}
-
-const layoutDefault: Layout = {
-  visibility: 'visible'
-}
+const paintKeys: (keyof Paint)[] = [
+  'fill-extrusion-ambient-occlusion-ground-attenuation',
+  'fill-extrusion-ambient-occlusion-ground-radius',
+  'fill-extrusion-ambient-occlusion-wall-radius',
+  'fill-extrusion-base',
+  'fill-extrusion-color',
+  'fill-extrusion-cutoff-fade-range',
+  'fill-extrusion-emissive-strength',
+  'fill-extrusion-flood-light-color',
+  'fill-extrusion-flood-light-ground-attenuation',
+  'fill-extrusion-flood-light-ground-radius',
+  'fill-extrusion-flood-light-intensity',
+  'fill-extrusion-flood-light-wall-radius',
+  'fill-extrusion-height',
+  'fill-extrusion-opacity',
+  'fill-extrusion-pattern',
+  'fill-extrusion-rounded-roof',
+  'fill-extrusion-translate',
+  'fill-extrusion-translate-anchor',
+  'fill-extrusion-vertical-gradient',
+  'fill-extrusion-vertical-scale'
+]
+const layoutKeys: (keyof Layout)[] = ['visibility']
 
 interface CreateFillExtrusionLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -64,8 +61,8 @@ export function useCreateFillExtrusionLayer(
 ) {
   const layerType = MapboxLayerType.FillExtrusion
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -83,23 +80,22 @@ export function useCreateFillExtrusionLayer(
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: FillExtrusionLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

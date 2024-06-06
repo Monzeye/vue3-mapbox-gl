@@ -9,30 +9,26 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 type Layer = CircleLayer
 type Layout = CircleLayout
 type Paint = CirclePaint
-
-const paintDefault: Paint = {
-  'circle-blur': 0,
-  'circle-color': '#000000',
-  'circle-emissive-strength': 0,
-  'circle-opacity': 1,
-  'circle-pitch-alignment': 'viewport',
-  'circle-pitch-scale': 'map',
-  'circle-radius': 5,
-  'circle-stroke-color': '#000000',
-  'circle-stroke-opacity': 1,
-  'circle-stroke-width': 0,
-  'circle-translate': [0, 0],
-  'circle-translate-anchor': 'map'
-}
-const layoutDefault: Layout = {
-  'circle-sort-key': undefined,
-  visibility: 'visible'
-}
+const paintKeys: (keyof Paint)[] = [
+  'circle-blur',
+  'circle-color',
+  'circle-emissive-strength',
+  'circle-opacity',
+  'circle-pitch-alignment',
+  'circle-pitch-scale',
+  'circle-radius',
+  'circle-stroke-color',
+  'circle-stroke-opacity',
+  'circle-stroke-width',
+  'circle-translate',
+  'circle-translate-anchor'
+]
+const layoutKeys: (keyof Layout)[] = ['circle-sort-key', 'visibility']
 
 interface CreateCircleLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -53,8 +49,8 @@ interface CreateCircleLayerProps {
 export function useCreateCircleLayer(props: CreateCircleLayerProps) {
   const layerType = MapboxLayerType.Circle
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -72,23 +68,22 @@ export function useCreateCircleLayer(props: CreateCircleLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: CircleLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

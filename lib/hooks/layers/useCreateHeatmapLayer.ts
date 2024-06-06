@@ -9,40 +9,21 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = HeatmapLayer
 type Layout = HeatmapLayout
 type Paint = HeatmapPaint
 
-const paintDefault: Paint = {
-  'heatmap-color': [
-    'interpolate',
-    ['linear'],
-    ['heatmap-density'],
-    0,
-    'rgba(0, 0, 255, 0)',
-    0.1,
-    'royalblue',
-    0.3,
-    'cyan',
-    0.5,
-    'lime',
-    0.7,
-    'yellow',
-    1,
-    'red'
-  ],
-  'heatmap-intensity': 1,
-  'heatmap-opacity': 1,
-  'heatmap-radius': 30,
-  'heatmap-weight': 1
-}
-
-const layoutDefault: Layout = {
-  visibility: 'visible'
-}
+const paintKeys: (keyof Paint)[] = [
+  'heatmap-color',
+  'heatmap-intensity',
+  'heatmap-opacity',
+  'heatmap-radius',
+  'heatmap-weight'
+]
+const layoutKeys: (keyof Layout)[] = ['visibility']
 
 interface CreateHeatmapLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -63,8 +44,8 @@ interface CreateHeatmapLayerProps {
 export function useCreateHeatmapLayer(props: CreateHeatmapLayerProps) {
   const layerType = MapboxLayerType.Heatmap
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -82,23 +63,22 @@ export function useCreateHeatmapLayer(props: CreateHeatmapLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: HeatmapLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })

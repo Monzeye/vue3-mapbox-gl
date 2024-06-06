@@ -9,37 +9,37 @@ import type {
 } from 'mapbox-gl'
 import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
-import { findLayerDefaultStyleSetVal } from '@/helpers/layerUtils'
+import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
 
 type Layer = LineLayer
 type Layout = LineLayout
 type Paint = LinePaint
 
-const paintDefault: Paint = {
-  'line-blur': 0,
-  'line-color': '#000000',
-  'line-dasharray': [],
-  'line-emissive-strength': 0,
-  'line-gap-width': 0,
-  'line-gradient': ['all'],
-  'line-offset': 0,
-  'line-opacity': 1,
-  'line-pattern': undefined,
-  'line-translate': [0, 0],
-  'line-translate-anchor': 'map',
-  'line-trim-offset': [0, 0],
-  'line-width': 1
-}
+const paintKeys: (keyof Paint)[] = [
+  'line-blur',
+  'line-color',
+  'line-dasharray',
+  'line-emissive-strength',
+  'line-gap-width',
+  'line-gradient',
+  'line-offset',
+  'line-opacity',
+  'line-pattern',
+  'line-translate',
+  'line-translate-anchor',
+  'line-trim-offset',
+  'line-width'
+]
 
-const layoutDefault: Layout = {
-  'line-cap': 'butt',
-  'line-join': 'miter',
-  'line-miter-limit': 2,
-  'line-round-limit': 1.05,
-  'line-sort-key': 0,
-  visibility: 'visible'
-}
+const layoutKeys: (keyof Layout)[] = [
+  'line-cap',
+  'line-join',
+  'line-miter-limit',
+  'line-round-limit',
+  'line-sort-key',
+  'visibility'
+]
 
 interface CreateLineLayerProps {
   map: ShallowRefOrNo<Nullable<Map>>
@@ -60,8 +60,8 @@ interface CreateLineLayerProps {
 export function useCreateLineLayer(props: CreateLineLayerProps) {
   const layerType = MapboxLayerType.Line
   props.style = props.style || {}
-  const paint: Paint = findLayerDefaultStyleSetVal(props.style, paintDefault)
-  const layout: Layout = findLayerDefaultStyleSetVal(props.style, layoutDefault)
+  const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
+  const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
@@ -79,23 +79,22 @@ export function useCreateLineLayer(props: CreateLineLayerProps) {
       metadata: props.metadata,
       sourceLayer: props.sourceLayer,
       register: (actions, map) => {
-        props.register &&
-          props.register(
-            {
-              ...actions,
-              setStyle
-            },
-            map
-          )
+        props.register?.(
+          {
+            ...actions,
+            setStyle
+          },
+          map
+        )
       }
     })
 
   function setStyle(styleVal: LineLayerStyle = {}) {
     Object.keys(styleVal).forEach(key => {
-      if (Reflect.has(paintDefault, key as keyof Paint)) {
+      if (paintKeys.includes(key as keyof Paint)) {
         setPaintProperty(key, styleVal[key as keyof Paint], { validate: false })
       }
-      if (Reflect.has(layoutDefault, key as keyof Layout)) {
+      if (layoutKeys.includes(key as keyof Layout)) {
         setLayoutProperty(key, styleVal[key as keyof Layout], {
           validate: false
         })
