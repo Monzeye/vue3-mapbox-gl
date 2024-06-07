@@ -1,7 +1,7 @@
 {
   "name": "vue3-mapbox-gl",
   "description": "一个基于Vue3+Typescript封装的Mapbox地图组件",
-  "version": "0.6.6",
+  "version": "0.6.8",
   "author": {
     "name": "Monzeye",
     "email": "monzeye@163.com"
