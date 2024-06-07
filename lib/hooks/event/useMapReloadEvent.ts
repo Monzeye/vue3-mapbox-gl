@@ -1,44 +1,51 @@
-import { watchEffect, onUnmounted } from 'vue'
-import type { ShallowRef } from 'vue'
+import { watchEffect, onUnmounted, unref } from 'vue'
+import type { MaybeRef } from 'vue'
 import type { Map } from 'mapbox-gl'
 import type { Nullable } from '@/types'
 
 interface CBFn {
-  (map: ShallowRef<Map>): void
+  (map: Map): void
 }
 export function useMapReloadEvent(
-  map: ShallowRef<Nullable<Map>>,
+  mapRef: MaybeRef<Nullable<Map>>,
   cbObj: {
     unLoad?: CBFn
     onLoad: CBFn
   }
 ) {
-  let isMapLoad = !!(map.value as any)?._loaded
-  isMapLoad && cbObj.onLoad && cbObj.onLoad(map as ShallowRef<Map>)
-  const unLoadEventFn = () => {
+  const map = unref(mapRef)
+  let isMapLoad = !!(map as any)?._loaded
+  isMapLoad && loadEventFn(true)
+  function unLoadEventFn() {
+    const map = unref(mapRef)
     if (!isMapLoad) return
     isMapLoad = false
-    cbObj.unLoad && cbObj.unLoad(map as ShallowRef<Map>)
+    cbObj.unLoad && cbObj.unLoad(map!)
   }
-  const loadEventFn = () => {
-    if (isMapLoad) return
+  function loadEventFn(isForce: boolean = false) {
+    const map = unref(mapRef)
+    if (isMapLoad && !isForce) return
     isMapLoad = true
-    cbObj.onLoad && cbObj.onLoad(map as ShallowRef<Map>)
+    cbObj.onLoad && cbObj.onLoad(map!)
   }
   function clear() {
-    if (map.value) {
-      map.value.off('styledata', loadEventFn)
-      map.value.off('styledataloading', unLoadEventFn)
-      map.value.off('load', loadEventFn)
+    const map = unref(mapRef)
+    if (map) {
+      map.off('styledata', loadEventFn)
+      map.off('styledataloading', unLoadEventFn)
+      map.off('load', loadEventFn)
     }
   }
   const stopEffect = watchEffect(onCleanUp => {
-    if (!map.value) return
+    const map = unref(mapRef)
+    if (!map) return
     if (!isMapLoad) {
-      map.value.on('load', loadEventFn)
+      map.on('load', loadEventFn)
+    } else {
+      loadEventFn()
     }
-    map.value.on('styledata', loadEventFn)
-    map.value.on('styledataloading', unLoadEventFn)
+    map.on('styledata', loadEventFn)
+    map.on('styledataloading', unLoadEventFn)
     onCleanUp(clear)
   })
   onUnmounted(() => {

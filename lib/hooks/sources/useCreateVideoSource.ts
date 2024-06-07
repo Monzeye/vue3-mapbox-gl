@@ -1,5 +1,5 @@
 import { watch, ref, unref, shallowRef, computed, onUnmounted } from 'vue'
-import type { Ref } from 'vue'
+import type { MaybeRef, Ref } from 'vue'
 import type {
   Map,
   MapSourceDataEvent,
@@ -10,12 +10,11 @@ import { getNanoid } from '@/helpers/getNanoid'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
 import { MapboxSourceType } from '@/enums/MapboxSourceEnum'
 import { hasSource } from '@/helpers/mapUtils'
-import { getShallowRef } from '@/helpers/getRef'
-import type { Nullable, ShallowRefOrNo } from '@/types'
-import { isV1Map } from '@/helpers/mapVersion'
+import type { Nullable } from '@/types'
+import { getMainVersion } from '@/helpers/mapVersion'
 
 interface CreateImageSourceProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   urls: string[]
   id?: string
   coordinates?: VideoSourceOptions['coordinates']
@@ -35,13 +34,12 @@ interface CreateImageSourceActions {
 }
 
 export function useCreateVideoSource({
-  map,
+  map: mapRef,
   id,
   register,
   urls,
   coordinates: coordinatesVal
 }: CreateImageSourceProps) {
-  const mapInstance = getShallowRef(map)
   const sourceType = MapboxSourceType.Video
   const sourceId = getNanoid(id)
   const play = ref<boolean>(true)
@@ -62,12 +60,13 @@ export function useCreateVideoSource({
     coordinatesVal && coordinates && source.value.setCoordinates(coordinatesVal)
   }
   function sourcedataEventFn(e: MapSourceDataEvent) {
+    const map = unref(mapRef)!
     let isSourceLoaded = e.isSourceLoaded
-    if (isV1Map()) {
+    if (getMainVersion() === 1) {
       isSourceLoaded = true
     }
     if (!source.value && e.sourceId === sourceId && isSourceLoaded) {
-      source.value = mapInstance.value!.getSource(sourceId) as VideoSource
+      source.value = map?.getSource(sourceId) as VideoSource
       register?.(
         {
           sourceId,
@@ -78,14 +77,14 @@ export function useCreateVideoSource({
           getSource,
           setCoordinates
         },
-        mapInstance.value!
+        map
       )
-      mapInstance.value!.off('sourcedata', sourcedataEventFn)
+      map?.off('sourcedata', sourcedataEventFn)
     }
   }
 
   function initImageSource() {
-    const map = unref(mapInstance.value)
+    const map = unref(mapRef)
     if (
       !source.value &&
       map &&
@@ -123,12 +122,12 @@ export function useCreateVideoSource({
     setPlay(val)
   })
 
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(mapRef, {
     unLoad: removeSource,
     onLoad: initImageSource
   })
   function removeSource() {
-    const map = unref(mapInstance?.value)
+    const map = unref(mapRef)
     source.value = null
     if (map && hasSource(map, sourceId)) {
       map.removeSource(sourceId)

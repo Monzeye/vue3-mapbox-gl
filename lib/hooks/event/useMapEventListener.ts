@@ -1,29 +1,29 @@
-import { getShallowRef } from '@/helpers/getRef'
-import type { Nullable, ShallowRefOrNo } from '@/types'
+import type { Nullable } from '@/types'
 import type { Map, MapEventTypes } from 'mapbox-gl'
-import { onUnmounted, watchEffect } from 'vue'
+import { onUnmounted, unref, watchEffect, type MaybeRef } from 'vue'
 
 interface LayerEventProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   event: keyof MapEventTypes
   on: <T extends keyof MapEventTypes>(e: MapEventTypes[T]) => void
 }
 
 export function useMapEventListener(props: LayerEventProps) {
-  const mapInstance = getShallowRef(props.map)
-
   const layerEventFn = (e: MapEventTypes[keyof MapEventTypes]) => {
     props.on && props.on(e)
   }
 
-  const stopEffect = watchEffect(() => {
-    if (mapInstance.value) {
-      mapInstance.value.on(props.event, layerEventFn)
+  const stopEffect = watchEffect(onCleanUp => {
+    const map = unref(props.map)
+    if (map) {
+      map.on(props.event, layerEventFn)
     }
+    onCleanUp(remove)
   })
   function remove() {
-    if (mapInstance.value) {
-      mapInstance.value.off(props.event, layerEventFn)
+    const map = unref(props.map)
+    if (map) {
+      map.off(props.event, layerEventFn)
     }
   }
 

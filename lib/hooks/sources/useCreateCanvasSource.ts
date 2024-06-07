@@ -1,5 +1,5 @@
 import { ref, unref, shallowRef, computed, onUnmounted } from 'vue'
-import type { ShallowRef } from 'vue'
+import type { MaybeRef, ShallowRef } from 'vue'
 import type {
   Map,
   CanvasSource,
@@ -8,14 +8,13 @@ import type {
 } from 'mapbox-gl'
 import { getNanoid } from '@/helpers/getNanoid'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
-import { getShallowRef } from '@/helpers/getRef'
 import { MapboxSourceType } from '@/enums/MapboxSourceEnum'
 import { hasSource } from '@/helpers/mapUtils'
-import type { Nullable, ShallowRefOrNo } from '@/types'
-import { isV1Map } from '@/helpers/mapVersion'
+import type { Nullable } from '@/types'
+import { getMainVersion } from '@/helpers/mapVersion'
 
 interface CreateImageSourceProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   id?: string
   canvas?: string | HTMLCanvasElement
   animate?: boolean
@@ -34,14 +33,13 @@ interface CreateImageSourceActions {
 }
 
 export function useCreateCanvasSource({
-  map,
+  map: mapRef,
   id,
   register,
   animate = false,
   canvas: canvasVal,
   coordinates: coordinatesVal
 }: CreateImageSourceProps) {
-  const mapInstance = getShallowRef(map)
   const sourceType = MapboxSourceType.Canvas
   const sourceId = getNanoid(id)
   const source = shallowRef<Nullable<CanvasSource>>(null)
@@ -50,18 +48,19 @@ export function useCreateCanvasSource({
   )
   const getSource = computed(() => source.value)
 
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(mapRef, {
     unLoad: removeSource,
     onLoad: createSource
   })
 
   function sourcedataEventFn(e: MapSourceDataEvent) {
+    const map = unref(mapRef)!
     let isSourceLoaded = e.isSourceLoaded
-    if (isV1Map()) {
+    if (getMainVersion() === 1) {
       isSourceLoaded = true
     }
     if (!source.value && e.sourceId === sourceId && isSourceLoaded) {
-      source.value = mapInstance.value!.getSource(sourceId) as CanvasSource
+      source.value = map?.getSource(sourceId) as CanvasSource
       register?.(
         {
           sourceId,
@@ -70,14 +69,14 @@ export function useCreateCanvasSource({
           setCoordinates,
           getCanvas
         },
-        mapInstance.value!
+        map
       )
-      mapInstance.value!.off('sourcedata', sourcedataEventFn)
+      map?.off('sourcedata', sourcedataEventFn)
     }
   }
 
   function createSource() {
-    const map = unref(mapInstance.value)
+    const map = unref(mapRef)
     if (!canvasVal) {
       canvasVal = document.createElement('canvas')
     }
@@ -120,7 +119,7 @@ export function useCreateCanvasSource({
   }
 
   function removeSource() {
-    const map = unref(mapInstance?.value)
+    const map = unref(mapRef)
     source.value = null
     if (map && hasSource(map, sourceId)) {
       map.removeSource(sourceId)

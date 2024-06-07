@@ -1,6 +1,5 @@
-import { getShallowRef } from '@/helpers/getRef'
 import type { ShallowRef } from 'vue'
-import { onUnmounted, watchEffect } from 'vue'
+import { onUnmounted, unref, watchEffect } from 'vue'
 import type { Map, ImageOptions, ImageDatas } from 'mapbox-gl'
 import type { Nullable } from '@/types'
 
@@ -12,7 +11,6 @@ interface CreateImageProps {
 }
 
 export function useCreateImage(props: CreateImageProps) {
-  const map = getShallowRef(props.map)
   let resolveFn: (value?: any) => void
   let rejectFn: (reason?: any) => void
   const promise = new Promise((resolve, reject) => {
@@ -20,29 +18,31 @@ export function useCreateImage(props: CreateImageProps) {
     rejectFn = reject
   })
   const stopEffect = watchEffect(() => {
-    if (map.value) {
+    const map = unref(props.map)
+    if (map) {
       updateImage(props.image).then(resolveFn).catch(rejectFn)
     }
   })
   async function updateImage(image: ImageDatas | string) {
-    if (map.value) {
+    const map = unref(props.map)
+    if (map) {
       if (typeof image === 'string') {
         try {
           image = await loadImage(image)
-          if (map.value!.hasImage(props.id)) {
-            map.value!.updateImage(props.id, image)
+          if (map!.hasImage(props.id)) {
+            map!.updateImage(props.id, image)
           } else {
-            map.value!.addImage(props.id, image, props.options)
+            map!.addImage(props.id, image, props.options)
           }
           Promise.resolve()
         } catch (error) {
           Promise.reject(error)
         }
       } else {
-        if (map.value!.hasImage(props.id)) {
-          map.value!.updateImage(props.id, image)
+        if (map!.hasImage(props.id)) {
+          map!.updateImage(props.id, image)
         } else {
-          map.value!.addImage(props.id, image, props.options)
+          map!.addImage(props.id, image, props.options)
         }
         Promise.resolve()
       }
@@ -52,11 +52,12 @@ export function useCreateImage(props: CreateImageProps) {
   }
 
   function loadImage(image: string): Promise<ImageDatas> {
+    const map = unref(props.map)
     return new Promise<ImageDatas>((resolve, reject) => {
-      if (!map.value) {
+      if (!map) {
         return reject(new Error('Map is not defined'))
       }
-      map.value.loadImage(image, (error, image) => {
+      map.loadImage(image, (error, image) => {
         if (error) reject(error)
         resolve(image as ImageDatas)
       })
@@ -64,8 +65,9 @@ export function useCreateImage(props: CreateImageProps) {
   }
 
   function remove() {
-    if (map.value?.hasImage(props.id)) {
-      map.value.removeImage(props.id)
+    const map = unref(props.map)
+    if (map?.hasImage(props.id)) {
+      map.removeImage(props.id)
     }
     rejectFn()
   }

@@ -18,10 +18,9 @@ import type {
   Projection,
   Style
 } from 'mapbox-gl'
-import type { MaboxMethods, MapboxActions } from '@/types'
+import type { MaboxMethods, MapboxActions, Nullable } from '@/types'
 import { MapboxStatus } from '@/enums/MapboxEnum'
 
-// props?: MaybeRef<Partial<MapboxOptions>>
 export function useMapbox(): [
   (componentAction: MapboxActions) => void,
   MaboxMethods
@@ -29,7 +28,7 @@ export function useMapbox(): [
   const instanceRef = ref<MapboxActions>()
   const loadedRef = ref<boolean>(false)
 
-  const mapInstance = shallowRef<Map | null>(null)
+  const mapInstance = shallowRef<Nullable<Map>>(null)
   const mapStatus = ref<MapboxStatus>(MapboxStatus.NotLoaded)
 
   let watchScope: EffectScope
@@ -45,16 +44,6 @@ export function useMapbox(): [
 
     watchScope = effectScope()
     watchScope.run(() => {
-      // watch(
-      //   () => unref(props),
-      //   () => {
-      //     props && instance.setMapOptions(unref(props))
-      //   },
-      //   {
-      //     immediate: true,
-      //     deep: true
-      //   }
-      // )
       watch(
         () => instance.getMapInstance.value,
         map => {
@@ -79,20 +68,16 @@ export function useMapbox(): [
   function getMapInstance(): Map | null | undefined {
     const mapInstance = unref(instanceRef.value?.getMapInstance)
     if (!mapInstance) {
-      console.warn(
-        'The map instance has not been obtained yet, please make sure the map is presented when performing the map operation!'
-      )
+      console.warn('useMapbox: The map is undefined')
     }
     return mapInstance
   }
   function getInstance(): MapboxActions | undefined {
-    const table = unref(instanceRef)
-    if (!table) {
-      console.warn(
-        'The map instance has not been obtained yet, please make sure the map is presented when performing the map operation!'
-      )
+    const instance = unref(instanceRef)
+    if (!instance) {
+      console.warn('useMapbox: The Actions is undefined')
     }
-    return table
+    return instance
   }
   const methods: MaboxMethods = {
     getMapInstance: computed(() => mapInstance.value),

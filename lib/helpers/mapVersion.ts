@@ -4,6 +4,6 @@ export function getVersion() {
   return mapboxgl.version
 }
 
-export function isV1Map() {
-  return mapboxgl.version.startsWith('1')
+export function getMainVersion() {
+  return parseInt(getVersion().split('.')[0], 10)
 }

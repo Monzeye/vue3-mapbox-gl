@@ -1,11 +1,18 @@
 import { hasLayer } from '@/helpers/mapUtils'
 import type { CreateLayerActions, ILayer, Nullable } from '@/types'
 import type { AnyLayer, Expression, Map } from 'mapbox-gl'
-import { computed, type ComputedRef } from 'vue'
+import {
+  type EffectScope,
+  computed,
+  effectScope,
+  unref,
+  type ComputedRef,
+  watch
+} from 'vue'
 import { ref, shallowRef } from 'vue'
 
 interface Methods<T extends ILayer> {
-  layerId: ComputedRef<string | undefined>
+  getLayerId: ComputedRef<string | undefined>
   getLayer: ComputedRef<Nullable<AnyLayer>>
   getFilter: () => any[] | undefined
   getLayoutProperty: (name: keyof T['layout']) => any
@@ -36,79 +43,110 @@ export function useLayer<T extends ILayer>(): [
   (componentAction: CreateLayerActions<T>, map: Map) => void,
   Methods<T>
 ] {
-  const layer = shallowRef<Nullable<AnyLayer>>(null)
-  const layerId = ref<string>()
-  const mapInstance = ref<Nullable<Map>>()
-  let componentMethods: CreateLayerActions<T> | null = null
+  const instanceRef = ref<CreateLayerActions<T>>()
+  const loadedRef = ref<boolean>(false)
 
-  function register(componentAction: CreateLayerActions<T>, map: Map) {
-    layer.value = componentAction.getLayer.value
-    layerId.value = componentAction.layerId
-    componentMethods = componentAction
-    mapInstance.value = map
+  const mapInstanceRef = shallowRef<Nullable<Map>>(null)
+  const layerRef = shallowRef<Nullable<AnyLayer>>(null)
+  const layerIdRef = ref<string>()
+
+  let watchScope: EffectScope
+
+  function register(instance: CreateLayerActions<T>, map: Map) {
+    if (unref(loadedRef) && instance === unref(instanceRef)) return
+
+    instanceRef.value = instance
+    mapInstanceRef.value = map
+
+    loadedRef.value = true
+
+    watchScope?.stop()
+
+    watchScope = effectScope()
+    watchScope.run(() => {
+      watch(
+        () => instance.getLayer.value,
+        layer => {
+          layerRef.value = layer
+          layerIdRef.value = layer?.id
+        },
+        {
+          immediate: true
+        }
+      )
+    })
   }
-
+  function getInstance(): CreateLayerActions<T> | undefined {
+    const instance = unref(instanceRef)
+    if (!instance) {
+      console.warn('useLayer: The Actions is undefined')
+    }
+    return instance
+  }
   const methods: Methods<T> = {
-    layerId: computed(() => layerId.value),
-    getLayer: computed(() => layer.value),
+    getLayerId: computed(() => layerIdRef.value),
+    getLayer: computed(() => layerRef.value),
     getFilter: () => {
       if (
-        mapInstance.value &&
-        layerId.value &&
-        hasLayer(mapInstance.value, layerId.value)
+        mapInstanceRef.value &&
+        layerIdRef.value &&
+        hasLayer(mapInstanceRef.value, layerIdRef.value)
       ) {
-        return mapInstance.value.getFilter(layerId.value)
+        return mapInstanceRef.value.getFilter(layerIdRef.value)
       }
     },
     getLayoutProperty: (name: keyof T['layout']) => {
       if (
-        mapInstance.value &&
-        layerId.value &&
-        hasLayer(mapInstance.value, layerId.value)
+        mapInstanceRef.value &&
+        layerIdRef.value &&
+        hasLayer(mapInstanceRef.value, layerIdRef.value)
       ) {
-        return mapInstance.value.getLayoutProperty(
-          layerId.value,
+        return mapInstanceRef.value.getLayoutProperty(
+          layerIdRef.value,
           name as string
         )
       }
     },
     getPaintProperty: (name: keyof T['paint']) => {
       if (
-        mapInstance.value &&
-        layerId.value &&
-        hasLayer(mapInstance.value, layerId.value)
+        mapInstanceRef.value &&
+        layerIdRef.value &&
+        hasLayer(mapInstanceRef.value, layerIdRef.value)
       ) {
-        return mapInstance.value.getPaintProperty(layerId.value, name as string)
+        return mapInstanceRef.value.getPaintProperty(
+          layerIdRef.value,
+          name as string
+        )
       }
     },
     setBeforeId: (beforeId?: string) => {
-      componentMethods?.setBeforeId(beforeId)
+      getInstance()?.setBeforeId(beforeId)
     },
     setFilter: (filter?: Expression) => {
-      componentMethods?.setFilter(filter)
+      getInstance()?.setFilter(filter)
     },
     setPaintProperty: (
       name: string,
       value: any,
       options?: { validate: boolean }
     ) => {
-      componentMethods?.setPaintProperty(name, value, options)
+      getInstance()?.setPaintProperty(name, value, options)
     },
     setLayoutProperty: (
       name: string,
       value: any,
       options?: { validate: boolean }
     ) => {
-      componentMethods?.setLayoutProperty(name, value, options)
+      getInstance()?.setLayoutProperty(name, value, options)
     },
     setZoomRange: (minzoom?: number, maxzoom?: number) => {
-      componentMethods?.setZoomRange(minzoom, maxzoom)
+      getInstance()?.setZoomRange(minzoom, maxzoom)
     },
     removeLayer: () => {
-      componentMethods?.removeLayer()
+      getInstance()?.removeLayer()
     },
     setStyle: (styleVal: T['layout'] & T['paint']) => {
-      componentMethods?.setStyle(styleVal)
+      getInstance()?.setStyle(styleVal)
     }
   }
 

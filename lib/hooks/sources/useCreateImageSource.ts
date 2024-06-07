@@ -1,5 +1,5 @@
 import { ref, unref, shallowRef, computed, onUnmounted } from 'vue'
-import type { ShallowRef } from 'vue'
+import type { MaybeRef, ShallowRef } from 'vue'
 import type {
   Map,
   ImageSource,
@@ -10,12 +10,11 @@ import { getNanoid } from '@/helpers/getNanoid'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
 import { MapboxSourceType } from '@/enums/MapboxSourceEnum'
 import { hasSource } from '@/helpers/mapUtils'
-import { getShallowRef } from '@/helpers/getRef'
-import type { Nullable, ShallowRefOrNo } from '@/types'
-import { isV1Map } from '@/helpers/mapVersion'
+import type { Nullable } from '@/types'
+import { getMainVersion } from '@/helpers/mapVersion'
 
 interface CreateImageSourceProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   id?: string
   url?: string
   coordinates?: ImageSourceOptions['coordinates']
@@ -29,14 +28,12 @@ interface CreateImageSourceActions {
 }
 
 export function useCreateImageSource({
-  map,
+  map: mapRef,
   id,
   register,
   url: urlVal,
   coordinates: coordinatesVal
 }: CreateImageSourceProps) {
-  const mapInstance = getShallowRef(map)
-
   const sourceType = MapboxSourceType.Image
   const sourceId = getNanoid(id)
   const source = shallowRef<Nullable<ImageSource>>(null)
@@ -46,20 +43,14 @@ export function useCreateImageSource({
   const coordinates = ref<ImageSourceOptions['coordinates']>(coordinatesVal)
 
   function updateImage(options: ImageSourceOptions) {
-    if (
-      mapInstance.value &&
-      source.value &&
-      hasSource(mapInstance.value, sourceId)
-    ) {
+    const map = unref(mapRef)
+    if (map && source.value && hasSource(map, sourceId)) {
       source.value.updateImage(options)
     }
   }
   function setCoordinates(coordinates: ImageSourceOptions['coordinates']) {
-    if (
-      mapInstance.value &&
-      source.value &&
-      hasSource(mapInstance.value, sourceId)
-    ) {
+    const map = unref(mapRef)
+    if (map && source.value && hasSource(map, sourceId)) {
       coordinates && source.value.setCoordinates(coordinates)
     }
   }
@@ -80,26 +71,27 @@ export function useCreateImageSource({
   }
 
   function sourcedataEventFn(e: MapSourceDataEvent) {
+    const map = unref(mapRef)!
     let isSourceLoaded = e.isSourceLoaded
-    if (isV1Map()) {
+    if (getMainVersion() === 1) {
       isSourceLoaded = true
     }
     if (!source.value && e.sourceId === sourceId && isSourceLoaded) {
-      source.value = mapInstance.value!.getSource(sourceId) as ImageSource
+      source.value = map?.getSource(sourceId) as ImageSource
       register?.(
         {
           sourceId,
           getSource,
           updateSource
         },
-        mapInstance.value!
+        map
       )
-      mapInstance.value!.off('sourcedata', sourcedataEventFn)
+      map?.off('sourcedata', sourcedataEventFn)
     }
   }
 
   function createSource() {
-    const map = unref(mapInstance.value)
+    const map = unref(mapRef)
     if (!map) return
     if (
       !source.value &&
@@ -115,7 +107,7 @@ export function useCreateImageSource({
       map.on('sourcedata', sourcedataEventFn)
     }
   }
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(mapRef, {
     unLoad: () => {
       removeSource()
     },
@@ -125,7 +117,7 @@ export function useCreateImageSource({
   })
 
   function removeSource() {
-    const map = unref(mapInstance?.value)
+    const map = unref(mapRef)
     source.value = null
     if (map && hasSource(map, sourceId)) {
       map.removeSource(sourceId)

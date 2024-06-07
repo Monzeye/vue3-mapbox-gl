@@ -23,16 +23,12 @@ import type {
   Projection,
   MapboxOptions
 } from 'mapbox-gl'
-import type { ShallowRef, Ref, ComputedRef } from 'vue'
+import type { ComputedRef } from 'vue'
 import type { MapboxStatus } from '@/enums/MapboxEnum'
 
 export type Nullable<T> = T | null
 
 export type Undefinedable<T> = T | undefined
-
-export type RefOrNo<T> = Ref<T> | T
-
-export type ShallowRefOrNo<T> = ShallowRef<T> | T
 
 export type ILayer =
   | BackgroundLayer

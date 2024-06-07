@@ -1,5 +1,5 @@
-import { onUnmounted, watchEffect, watch } from 'vue'
-import type { Ref } from 'vue'
+import { onUnmounted, watchEffect, watch, unref, shallowRef } from 'vue'
+import type { MaybeRef, Ref } from 'vue'
 import type {
   EventedListener,
   LngLatLike,
@@ -8,14 +8,13 @@ import type {
   Popup
 } from 'mapbox-gl'
 import { Marker } from 'mapbox-gl'
-import { getShallowRef } from '@/helpers/getRef'
-import type { Nullable, ShallowRefOrNo } from '@/types'
+import type { Nullable } from '@/types'
 import { lngLatLikeHasValue } from '@/helpers/mapUtils'
 
 interface CreateMarkerProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   lnglat?: LngLatLike
-  popup?: ShallowRefOrNo<Nullable<Popup>>
+  popup?: MaybeRef<Nullable<Popup>>
   el?: Ref<HTMLElement | undefined>
   options?: MarkerOptions
   on?: {
@@ -26,16 +25,14 @@ interface CreateMarkerProps {
 }
 
 export function useCreateMarker({
-  map,
+  map: mapRef,
   lnglat: lnglatVal,
-  popup: popupVal,
+  popup: popupRef,
   el,
   options = {},
   on = {}
 }: CreateMarkerProps) {
-  const mapInstance = getShallowRef(map)
-  const popup = getShallowRef(popupVal)
-  const marker = getShallowRef<Nullable<Marker>>(null)
+  const marker = shallowRef<Nullable<Marker>>(null)
 
   function dragstartEventFn(ev: Event) {
     on.dragstart?.(ev)
@@ -46,9 +43,10 @@ export function useCreateMarker({
   function dragendEventFn(ev: Event) {
     on.dragend?.(ev)
   }
-  let oPopup = popup.value
+  let oPopup = unref(popupRef)
   const stopEffect = watchEffect(onCleanUp => {
-    if (mapInstance.value && !marker.value) {
+    const map = unref(mapRef)
+    if (map && !marker.value) {
       marker.value = new Marker({
         ...options,
         element: el?.value
@@ -56,7 +54,7 @@ export function useCreateMarker({
       lngLatLikeHasValue(lnglatVal) && setLngLat(lnglatVal)
 
       oPopup && setPopup(oPopup)
-      marker.value.addTo(mapInstance.value)
+      marker.value.addTo(map)
       marker.value.on(
         'dragstart',
         dragstartEventFn as unknown as EventedListener
@@ -66,7 +64,7 @@ export function useCreateMarker({
     }
     onCleanUp(remove)
   })
-  watch(popup, setPopup)
+  watch(() => unref(popupRef), setPopup)
 
   function setLngLat(lnglat: LngLatLike) {
     if (marker.value) {

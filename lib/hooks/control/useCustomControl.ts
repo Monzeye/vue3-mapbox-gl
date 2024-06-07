@@ -1,7 +1,6 @@
 import type { ShallowRef, Ref } from 'vue'
-import { shallowRef, watchEffect, onUnmounted } from 'vue'
+import { shallowRef, watchEffect, onUnmounted, unref } from 'vue'
 import type { Map, IControl, ControlPosition } from 'mapbox-gl'
-import { getRef } from '@/helpers/getRef'
 import type { Nullable } from '@/types'
 
 interface CustomControlProps {
@@ -56,17 +55,17 @@ class CustomControl implements IControl {
 
 export function useCustomControl({
   map,
-  container: containerEl,
+  container,
   className,
   position = 'top-right',
   on = {}
 }: CustomControlProps) {
   const customControl = shallowRef<Nullable<CustomControl>>(null)
-  const container = getRef(containerEl)
+
   const stopEffect = watchEffect(() => {
-    if (map.value && container.value && !customControl.value) {
+    if (map.value && unref(container) && !customControl.value) {
       customControl.value = new CustomControl({
-        el: container.value,
+        el: unref(container)!,
         className,
         on: {
           add: (map, constructor) => {

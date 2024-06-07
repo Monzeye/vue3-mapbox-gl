@@ -1,5 +1,4 @@
-import { onUnmounted, watchEffect } from 'vue'
-import { getShallowRef } from '@/helpers/getRef'
+import { onUnmounted, unref, watchEffect } from 'vue'
 import type { CreateRasterDemSourceProps } from '@/hooks/sources/useCreateRasterDemSource'
 import { useCreateRasterDemSource } from '@/hooks/sources/useCreateRasterDemSource'
 
@@ -8,8 +7,6 @@ export interface CreateTerrainProps extends CreateRasterDemSourceProps {
 }
 
 export function useCreateTerrain(props: CreateTerrainProps) {
-  const mapInstance = getShallowRef(props.map)
-
   const {
     removeSource,
     sourceId,
@@ -17,23 +14,25 @@ export function useCreateTerrain(props: CreateTerrainProps) {
     setTiles: setTerrainTiles,
     setUrl: setTerrainUrl
   } = useCreateRasterDemSource({
-    map: mapInstance,
+    map: props.map,
     id: props.id,
     url: props.url,
     tiles: props.tiles,
     options: props.options
   })
   const stopEffect = watchEffect(() => {
-    if (mapInstance.value && getTerrainSource.value) {
-      mapInstance.value.setTerrain({
+    const map = unref(props.map)
+    if (map && getTerrainSource.value) {
+      map.setTerrain({
         source: sourceId,
         exaggeration: props.exaggeration ?? 1
       })
     }
   })
   function removeTerrain() {
-    if (mapInstance.value && mapInstance.value.getTerrain()) {
-      mapInstance.value?.setTerrain(null)
+    const map = unref(props.map)
+    if (map && map.getTerrain()) {
+      map?.setTerrain(null)
     }
     removeSource()
   }

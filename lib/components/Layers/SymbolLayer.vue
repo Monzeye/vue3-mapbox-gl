@@ -2,20 +2,19 @@
 import { ref, inject, watch } from 'vue'
 import { MapProvideKey, SourceProvideKey } from '@/enums/MapProvideKey'
 import { useCreateSymbolLayer } from '@/hooks/layers/useCreateSymbolLayer'
-import { useLayerEventListener } from '@/hooks/event/useLayerEventListener'
 import { MapboxLayerEvents } from '@/enums/MapboxLayerEnum'
+import { useLayerEventListener } from '@/hooks/event/useLayerEventListener'
 import type {
+  Map,
   Expression,
-  //  MapLayerEventType,
+  MapLayerEventType,
   MapLayerMouseEvent,
   MapLayerTouchEvent,
-  SymbolLayer,
   AnyLayout,
-  Map,
-  SymbolLayerStyle
+  SymbolLayerStyle,
+  SymbolLayer
 } from 'mapbox-gl'
-import type { CreateLayerActions } from '@/index'
-
+import type { CreateLayerActions } from '@/types'
 interface LayerProps {
   id?: string
   filter?: Expression
@@ -42,6 +41,7 @@ const props = withDefaults(
   }
 )
 const emit = defineEmits<{
+  (e: keyof MapLayerEventType, ev: any): any
   (e: 'register', actions: CreateLayerActions<SymbolLayer>, map: Map): any
   (e: 'click', ev: MapLayerMouseEvent): any
   (e: 'dblclick', ev: MapLayerMouseEvent): any
@@ -94,7 +94,7 @@ MapboxLayerEvents.map(eventName => {
     layer: getLayer,
     event: eventName,
     on: data => {
-      emit(eventName as any, data as any)
+      emit(eventName, data)
     }
   })
 })

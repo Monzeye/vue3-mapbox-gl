@@ -1,5 +1,5 @@
 import type { ShallowRef } from 'vue'
-import type { LngLatLike, Map } from 'mapbox-gl'
+import type { LngLat, LngLatLike, Map } from 'mapbox-gl'
 import type { ChainCameraItem, Nullable } from '@/types'
 import { MercatorCoordinate } from 'mapbox-gl'
 import { shallowRef, watchEffect } from 'vue'
@@ -30,7 +30,7 @@ class ChainCamera {
   animationTime: number
   lastTime: number
   animationFrame: number
-  currentMapCenter: LngLatLike | null
+  currentMapCenter: LngLat | null
   isPlay: boolean
   constructor(config: { map: Map; chainCameraList: ChainCameraItem[] }) {
     this.map = config.map
@@ -43,6 +43,9 @@ class ChainCamera {
     this.isPlay = false
   }
   play() {
+    if (!this.map) {
+      throw new Error('map is required')
+    }
     if (this.isPlay) {
       return
     }
@@ -101,7 +104,18 @@ class ChainCamera {
     let currentItem: ChainCameraItem
     if (this.animationIndex === 0) {
       currentItem = this.chainCameraList[this.animationIndex]
-      prevItem = this.chainCameraList[this.animationIndex]
+      if (currentItem.duration >= 0) {
+        // 是否在地图中心位置过度到第一个点
+        const currentMapCenter = this.currentMapCenter!
+        prevItem = {
+          lngLat: [currentMapCenter.lng, currentMapCenter.lat],
+          lookAtLngLat: currentItem.lngLat,
+          duration: 0,
+          altitude: currentItem.altitude
+        }
+      } else {
+        prevItem = this.chainCameraList[this.animationIndex]
+      }
     } else {
       prevItem = this.chainCameraList[this.animationIndex - 1]
       currentItem = this.chainCameraList[this.animationIndex]
@@ -164,14 +178,15 @@ export function useChainCamera({
   list: ChainCameraItem[]
 }) {
   const chainCamera = shallowRef<ChainCamera>()
-  watchEffect(() => {
-    if (map.value) {
+  watchEffect(onCleanUp => {
+    if (map.value && !chainCamera.value) {
       chainCamera.value = new ChainCamera({
         map: map.value,
         chainCameraList: list
       })
-      autoplay && chainCamera.value.play()
     }
+    autoplay && play()
+    onCleanUp(remove)
   })
   function play() {
     chainCamera.value?.play()

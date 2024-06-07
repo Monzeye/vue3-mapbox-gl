@@ -1,8 +1,7 @@
 import type { ShallowRef, Ref } from 'vue'
-import { shallowRef, watchEffect, onUnmounted } from 'vue'
+import { shallowRef, watchEffect, onUnmounted, unref } from 'vue'
 import type { ControlPosition } from 'mapbox-gl'
 import { Map, FullscreenControl } from 'mapbox-gl'
-import { getRef } from '@/helpers/getRef'
 import type { Nullable } from '@/types'
 
 interface FullscreenControlProps {
@@ -16,18 +15,19 @@ interface FullscreenControlProps {
 
 export function useFullscreenControl({
   map,
-  container: containerEl,
+  container,
   position = 'bottom-right'
 }: FullscreenControlProps) {
   const fullscreenControl = shallowRef<Nullable<FullscreenControl>>(null)
-  const container = getRef(containerEl)
   const stopEffect = watchEffect(() => {
     if (map.value && !fullscreenControl.value) {
       let containerElement: HTMLElement | null | undefined
-      if (typeof container.value === 'string') {
-        containerElement = document.querySelector<HTMLElement>(container.value)
+      if (typeof unref(container) === 'string') {
+        containerElement = document.querySelector<HTMLElement>(
+          unref(container) as string
+        )
       } else {
-        containerElement = container.value
+        containerElement = unref(container) as HTMLElement
       }
       fullscreenControl.value = new FullscreenControl({
         container: containerElement || document.body

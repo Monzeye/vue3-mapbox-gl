@@ -1,5 +1,5 @@
-import { computed, ref, shallowRef } from 'vue'
-import type { ComputedRef } from 'vue'
+import { computed, effectScope, ref, shallowRef, unref, watch } from 'vue'
+import type { ComputedRef, EffectScope } from 'vue'
 import type { CreateGeoJsonSourceActions } from '@/hooks/sources/useCreateGeoJsonSource'
 import type { GeoJSONSource, GeoJSONSourceOptions } from 'mapbox-gl'
 import type { Point, Feature, GeoJsonProperties } from 'geojson'
@@ -24,25 +24,61 @@ export function useGeoJsonSource(): [
   (componentAction: CreateGeoJsonSourceActions) => void,
   Methods
 ] {
-  const source = shallowRef<Nullable<GeoJSONSource>>(null)
-  const sourceId = ref<string>()
+  const instanceRef = ref<CreateGeoJsonSourceActions>()
+  const loadedRef = ref<boolean>(false)
+
+  const sourceRef = shallowRef<Nullable<GeoJSONSource>>(null)
+  const sourceIdRef = ref<string>()
+  let watchScope: EffectScope
+
   let componentMethods: CreateGeoJsonSourceActions
 
-  function register(componentAction: CreateGeoJsonSourceActions) {
-    source.value = componentAction.getSource.value
-    sourceId.value = componentAction.sourceId
-    componentMethods = componentAction
+  function register(instance: CreateGeoJsonSourceActions) {
+    if (unref(loadedRef) && instance === unref(instanceRef)) return
+    instanceRef.value = instance
+
+    loadedRef.value = true
+
+    watchScope?.stop()
+
+    watchScope = effectScope()
+    watchScope.run(() => {
+      watch(
+        () => instance.getSource.value,
+        source => {
+          sourceRef.value = source
+          sourceIdRef.value = instance.sourceId
+        },
+        {
+          immediate: true
+        }
+      )
+    })
+  }
+  // function getInstance(): CreateGeoJsonSourceActions | undefined {
+  //   const instance = unref(instanceRef)
+  //   if (!instance) {
+  //     console.warn('useGeoJsonSource: The Actions is undefined')
+  //   }
+  //   return instance
+  // }
+  function getSourceInstance(): GeoJSONSource | null | undefined {
+    const sourceInstance = unref(sourceRef)
+    if (!sourceInstance) {
+      console.warn('useGeoJsonSource: The GeoJSONSource is undefined')
+    }
+    return sourceInstance
   }
 
   const methods: Methods = {
-    sourceId: computed(() => sourceId.value),
-    getSource: computed(() => source.value),
+    sourceId: computed(() => sourceIdRef.value),
+    getSource: computed(() => sourceRef.value),
     setData: (dataVal: GeoJSONSourceOptions['data']) => {
       componentMethods.setData?.(dataVal)
     },
     getClusterExpansionZoom: (clusterId: number) => {
       return new Promise((resolve, reject) => {
-        source.value?.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        getSourceInstance()?.getClusterExpansionZoom(clusterId, (err, zoom) => {
           if (err) return reject(err)
           resolve(zoom)
         })
@@ -52,7 +88,7 @@ export function useGeoJsonSource(): [
       clusterId: number
     ) => {
       return new Promise<Feature<Point, T>[]>((resolve, reject) => {
-        source.value?.getClusterChildren(clusterId, (err, features) => {
+        getSourceInstance()?.getClusterChildren(clusterId, (err, features) => {
           if (err) return reject(err)
           resolve(features as Feature<Point, T>[])
         })
@@ -64,7 +100,7 @@ export function useGeoJsonSource(): [
       offset = 0
     ) => {
       return new Promise<Feature<Point, T>[]>((resolve, reject) => {
-        source.value?.getClusterLeaves(
+        getSourceInstance()?.getClusterLeaves(
           clusterId,
           limit,
           offset,

@@ -1,8 +1,7 @@
-import { computed, onUnmounted, watchEffect } from 'vue'
+import { computed, onUnmounted, shallowRef, unref, watchEffect } from 'vue'
 import type { Ref, ShallowRef } from 'vue'
 import type { LngLatLike, Map, PopupOptions } from 'mapbox-gl'
 import { Popup } from 'mapbox-gl'
-import { getShallowRef } from '@/helpers/getRef'
 import type { Nullable } from '@/types'
 import { lngLatLikeHasValue } from '@/helpers/mapUtils'
 
@@ -19,18 +18,18 @@ interface CreatePopupProps {
 }
 
 export function useCreatePopup({
-  map,
+  map: mapRef,
   lnglat: lnglatVal,
   el,
   show: showVal = false,
   options = {},
   on = {}
 }: CreatePopupProps) {
-  const mapInstance = getShallowRef(map)
-  const popup = getShallowRef<Nullable<Popup>>(null)
+  const popup = shallowRef<Nullable<Popup>>(null)
   const getPopup = computed(() => popup.value)
   const stopEffect = watchEffect(onCleanUp => {
-    if (mapInstance.value && el?.value && !popup.value) {
+    const map = unref(mapRef)
+    if (map && el?.value && !popup.value) {
       popup.value = new Popup({
         ...options
       })
@@ -85,8 +84,9 @@ export function useCreatePopup({
   }
 
   function show() {
-    if (mapInstance.value && popup.value && !popup.value.isOpen()) {
-      popup.value.addTo(mapInstance.value)
+    const map = unref(mapRef)
+    if (map && popup.value && !popup.value.isOpen()) {
+      popup.value.addTo(map)
     }
   }
   function remove() {

@@ -1,4 +1,3 @@
-import { getShallowRef } from '@/helpers/getRef'
 import type { Map, Fog } from 'mapbox-gl'
 import type { ShallowRef } from 'vue'
 import { ref } from 'vue'
@@ -29,9 +28,8 @@ export function useCreateFog({
   map,
   options: optionsVal = defaultFog
 }: CreateFogProps) {
-  const mapInstance = getShallowRef(map)
   const options = ref(optionsVal)
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(map, {
     onLoad() {
       setFog(options.value)
     },
@@ -41,10 +39,10 @@ export function useCreateFog({
   })
   function setFog(optionsVal: Fog) {
     options.value = optionsVal
-    mapInstance.value && mapInstance.value.setFog(options.value)
+    map.value?.setFog(options.value)
   }
   function removeFog() {
-    mapInstance.value && mapInstance.value.setFog(null!)
+    map.value?.setFog(null!)
   }
   return {
     setFog,

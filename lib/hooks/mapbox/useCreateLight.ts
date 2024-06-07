@@ -1,12 +1,11 @@
-import { ref } from 'vue'
-import type { ShallowRef } from 'vue'
+import { ref, unref } from 'vue'
+import type { MaybeRef } from 'vue'
 import type { Light, Map } from 'mapbox-gl'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
-import { getShallowRef } from '@/helpers/getRef'
 import type { Nullable } from '@/types'
 
 interface CreateFogProps {
-  map: ShallowRef<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   options?: Light
 }
 
@@ -24,23 +23,24 @@ const defaultLight: Light = {
 // 灯光的高度（从0开始°，正上方，到 180°，正下方）
 
 export function useCreateLight({
-  map,
+  map: mapRef,
   options: optionsVal = defaultLight
 }: CreateFogProps) {
-  const mapInstance = getShallowRef(map)
   const options = ref(optionsVal)
 
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(mapRef, {
     onLoad() {
       setLight(options.value)
     }
   })
   function setLight(optionsVal: Light) {
+    const map = unref(mapRef)
     options.value = optionsVal
-    mapInstance.value && mapInstance.value.setLight(options.value)
+    map?.setLight(options.value)
   }
   function removeLight() {
-    mapInstance.value && mapInstance.value.setLight({})
+    const map = unref(mapRef)
+    map?.setLight({})
   }
   return {
     setLight,

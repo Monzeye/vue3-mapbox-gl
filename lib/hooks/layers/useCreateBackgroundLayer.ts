@@ -5,13 +5,14 @@ import type {
   AnySourceData,
   BackgroundPaint,
   BackgroundLayout,
-  BackgroundLayerStyle
+  BackgroundLayerStyle,
+  AnySourceImpl
 } from 'mapbox-gl'
-import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
+import type { CreateLayerActions, Nullable } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
 import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
-import { getShallowRef } from '@/helpers/getRef'
+import type { MaybeRef } from 'vue'
 
 type Layer = BackgroundLayer
 type Layout = BackgroundLayout
@@ -26,8 +27,8 @@ const paintKeys: (keyof Paint)[] = [
 const layoutKeys: (keyof Layout)[] = ['visibility']
 
 interface CreateBackgroundLayerProps {
-  map: ShallowRefOrNo<Nullable<Map>>
-  source?: ShallowRefOrNo<string | AnySourceData | object | null>
+  map: MaybeRef<Nullable<Map>>
+  source: MaybeRef<string | AnySourceImpl | AnySourceData | object | null>
   renderingMode?: string
   slot?: 'bottom' | 'middle' | 'top'
   id?: string
@@ -46,11 +47,10 @@ export function useCreateBackgroundLayer(props: CreateBackgroundLayerProps) {
   props.style = props.style || {}
   const paint: Paint = filterStylePropertiesByKeys(props.style, paintKeys)
   const layout: Layout = filterStylePropertiesByKeys(props.style, layoutKeys)
-  const source = getShallowRef(props.source, {})
   const { setLayoutProperty, setPaintProperty, ...actions } =
     useCreateLayer<Layer>({
       map: props.map,
-      source: source,
+      source: props.source,
       type: layerType,
       id: props.id,
       beforeId: props.beforeId,

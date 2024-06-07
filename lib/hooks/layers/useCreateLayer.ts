@@ -1,18 +1,20 @@
+import type { CreateBaseLayerActions, ILayer, Nullable } from '@/types'
 import type {
-  CreateBaseLayerActions,
-  ILayer,
-  Nullable,
-  ShallowRefOrNo
-} from '@/types'
-import type { AnySourceImpl, Expression, LayerType, Map } from 'mapbox-gl'
+  AnySourceData,
+  AnySourceImpl,
+  Expression,
+  LayerType,
+  Map
+} from 'mapbox-gl'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
-import { shallowRef, unref, computed, watch } from 'vue'
+import { shallowRef, unref, computed, watch, type MaybeRef } from 'vue'
 import { getNanoid } from '@/helpers/getNanoid'
-import { getShallowRef } from '@/helpers/getRef'
 import { hasLayer } from '@/helpers/mapUtils'
 interface CreateBaseLayerProps<Layer extends ILayer> {
-  map: ShallowRefOrNo<Nullable<Map>>
-  source: ShallowRefOrNo<string | AnySourceImpl | object | null>
+  map: MaybeRef<Nullable<Map>>
+  source: MaybeRef<
+    string | AnySourceImpl | AnySourceData | object | null | undefined
+  >
   type: LayerType
   beforeId?: string
   filter?: Expression
@@ -32,7 +34,7 @@ export function useCreateLayer<Layer extends ILayer>(
   cfg: CreateBaseLayerProps<Layer>
 ) {
   const {
-    map,
+    map: mapRef,
     source: sourceRef,
     type,
     beforeId,
@@ -48,48 +50,40 @@ export function useCreateLayer<Layer extends ILayer>(
     sourceLayer = '',
     register
   } = cfg
-  const mapInstance = getShallowRef(map)
-  const source = getShallowRef(sourceRef)
   const layerId = getNanoid(id)
   const layer = shallowRef<Nullable<Layer>>(null)
   const getLayer = computed(() => layer.value)
-  watch(source, source => {
-    if (source) {
-      createLayer()
-    } else {
-      removeLayer()
+  watch(
+    () => unref(sourceRef),
+    source => {
+      if (source) {
+        createLayer()
+      } else {
+        removeLayer()
+      }
     }
-  })
-  useMapReloadEvent(mapInstance, {
+  )
+  useMapReloadEvent(mapRef, {
     unLoad: removeLayer,
     onLoad: createLayer
   })
 
   function setBeforeId(beforeIdVal?: string) {
-    if (
-      mapInstance.value &&
-      layer.value &&
-      hasLayer(mapInstance.value, layerId)
-    ) {
-      mapInstance.value.moveLayer(layerId, beforeIdVal)
+    const mapInstance = unref(mapRef)
+    if (mapInstance && layer.value && hasLayer(mapInstance, layerId)) {
+      mapInstance.moveLayer(layerId, beforeIdVal)
     }
   }
   function setFilter(filterVal: Expression = ['all']) {
-    if (
-      mapInstance.value &&
-      layer.value &&
-      hasLayer(mapInstance.value, layerId)
-    ) {
-      mapInstance.value.setFilter(layerId, filterVal)
+    const mapInstance = unref(mapRef)
+    if (mapInstance && layer.value && hasLayer(mapInstance, layerId)) {
+      mapInstance.setFilter(layerId, filterVal)
     }
   }
   function setZoomRange(minzoomVal = 0, maxzoomVal = 24) {
-    if (
-      mapInstance.value &&
-      layer.value &&
-      hasLayer(mapInstance.value, layerId)
-    ) {
-      mapInstance.value.setLayerZoomRange(layerId, minzoomVal, maxzoomVal)
+    const mapInstance = unref(mapRef)
+    if (mapInstance && layer.value && hasLayer(mapInstance, layerId)) {
+      mapInstance.setLayerZoomRange(layerId, minzoomVal, maxzoomVal)
     }
   }
   function setPaintProperty(
@@ -99,12 +93,9 @@ export function useCreateLayer<Layer extends ILayer>(
       validate: true
     }
   ) {
-    if (
-      mapInstance.value &&
-      layer.value &&
-      hasLayer(mapInstance.value, layerId)
-    ) {
-      mapInstance.value.setPaintProperty(layerId, name, value, options)
+    const mapInstance = unref(mapRef)
+    if (mapInstance && layer.value && hasLayer(mapInstance, layerId)) {
+      mapInstance.setPaintProperty(layerId, name, value, options)
     }
   }
   function setLayoutProperty(
@@ -114,31 +105,34 @@ export function useCreateLayer<Layer extends ILayer>(
       validate: true
     }
   ) {
-    if (
-      mapInstance.value &&
-      layer.value &&
-      hasLayer(mapInstance.value, layerId)
-    ) {
-      mapInstance.value.setLayoutProperty(layerId, name, value, options)
+    const mapInstance = unref(mapRef)
+    if (mapInstance && layer.value && hasLayer(mapInstance, layerId)) {
+      mapInstance.setLayoutProperty(layerId, name, value, options)
     }
   }
   function createLayer() {
-    const map = unref(mapInstance.value)
-    if (map && source.value && !layer.value && !hasLayer(map, layerId)) {
+    const mapInstance = unref(mapRef)
+    const source = unref(sourceRef)
+    if (
+      mapInstance &&
+      source &&
+      !layer.value &&
+      !hasLayer(mapInstance, layerId)
+    ) {
       let sourceData
-      if (typeof source.value === 'string') {
-        sourceData = source.value
+      if (typeof source === 'string') {
+        sourceData = source
       }
-      if (typeof source.value === 'object') {
+      if (typeof source === 'object') {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        sourceData = source.value.id
-          ? (source.value as any).id
-          : (source.value as any).type
-            ? source.value
+        sourceData = source.id
+          ? (source as any).id
+          : (source as any).type
+            ? source
             : ''
       }
-      map.addLayer(
+      mapInstance.addLayer(
         {
           id: layerId,
           type,
@@ -157,7 +151,7 @@ export function useCreateLayer<Layer extends ILayer>(
         },
         beforeId
       )
-      layer.value = map.getLayer(layerId) as Layer
+      layer.value = mapInstance.getLayer(layerId) as Layer
       register?.(
         {
           layerId,
@@ -170,16 +164,16 @@ export function useCreateLayer<Layer extends ILayer>(
           setPaintProperty,
           setLayoutProperty
         },
-        map
+        mapInstance
       )
     }
   }
 
   function removeLayer() {
+    const mapInstance = unref(mapRef)
     layer.value = null
-    const map = unref(mapInstance.value)
-    if (map && hasLayer(map, layerId)) {
-      map.removeLayer(layerId)
+    if (mapInstance && hasLayer(mapInstance, layerId)) {
+      mapInstance.removeLayer(layerId)
     }
   }
 

@@ -1,5 +1,5 @@
 import { ref, unref, shallowRef, computed, onUnmounted } from 'vue'
-import type { ShallowRef } from 'vue'
+import type { MaybeRef, ShallowRef } from 'vue'
 import type {
   Map,
   MapSourceDataEvent,
@@ -10,12 +10,11 @@ import { getNanoid } from '@/helpers/getNanoid'
 import { useMapReloadEvent } from '@/hooks/event/useMapReloadEvent'
 import { MapboxSourceType } from '@/enums/MapboxSourceEnum'
 import { hasSource } from '@/helpers/mapUtils'
-import { getShallowRef } from '@/helpers/getRef'
-import type { Nullable, ShallowRefOrNo } from '@/types'
-import { isV1Map } from '@/helpers/mapVersion'
+import type { Nullable } from '@/types'
+import { getMainVersion } from '@/helpers/mapVersion'
 
 interface CreateVectorTileSourceProps {
-  map: ShallowRefOrNo<Nullable<Map>>
+  map: MaybeRef<Nullable<Map>>
   url?: string
   tiles?: string[]
   id?: string
@@ -32,14 +31,13 @@ interface CreateVectorTileSourceActions {
 }
 
 export function useCreateVectorTileSource({
-  map,
+  map: mapRef,
   id,
   register,
   url: urlVal,
   tiles: tilesVal,
   options: optionsVal = {}
 }: CreateVectorTileSourceProps) {
-  const mapInstance = getShallowRef(map)
   const sourceType = MapboxSourceType.Vector
   const sourceId = getNanoid(id)
   const source = shallowRef<Nullable<VectorSourceImpl>>(null)
@@ -48,12 +46,13 @@ export function useCreateVectorTileSource({
   const tiles = ref<string[]>(tilesVal ?? [])
 
   function sourcedataEventFn(e: MapSourceDataEvent) {
+    const map = unref(mapRef)!
     let isSourceLoaded = e.isSourceLoaded
-    if (isV1Map()) {
+    if (getMainVersion() === 1) {
       isSourceLoaded = true
     }
     if (!source.value && e.sourceId === sourceId && isSourceLoaded) {
-      source.value = mapInstance.value!.getSource(sourceId) as VectorSourceImpl
+      source.value = map?.getSource(sourceId) as VectorSourceImpl
       register?.(
         {
           sourceId,
@@ -62,14 +61,14 @@ export function useCreateVectorTileSource({
           setTiles,
           reload
         },
-        mapInstance.value!
+        map
       )
-      mapInstance.value!.off('sourcedata', sourcedataEventFn)
+      map?.off('sourcedata', sourcedataEventFn)
     }
   }
 
   function initVectorTileSource() {
-    const map = unref(mapInstance.value)
+    const map = unref(mapRef)
     if (
       !source.value &&
       map &&
@@ -111,12 +110,12 @@ export function useCreateVectorTileSource({
   function reload() {
     ;(source.value as any)?.reload()
   }
-  useMapReloadEvent(mapInstance, {
+  useMapReloadEvent(mapRef, {
     unLoad: removeSource,
     onLoad: initVectorTileSource
   })
   function removeSource() {
-    const map = unref(mapInstance?.value)
+    const map = unref(mapRef)
     source.value = null
     if (map && hasSource(map, sourceId)) {
       map.removeSource(sourceId)

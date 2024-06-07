@@ -5,13 +5,16 @@ import { useCreateSkyLayer } from '@/hooks/layers/useCreateSkyLayer'
 import { MapboxLayerEvents } from '@/enums/MapboxLayerEnum'
 import { useLayerEventListener } from '@/hooks/event/useLayerEventListener'
 import type {
+  Map,
   Expression,
   MapLayerEventType,
   MapLayerMouseEvent,
   MapLayerTouchEvent,
   AnyLayout,
-  SkyLayerStyle
+  SkyLayerStyle,
+  SkyLayer
 } from 'mapbox-gl'
+import type { CreateLayerActions } from '@/types'
 interface LayerProps {
   id?: string
   filter?: Expression
@@ -27,11 +30,19 @@ interface LayerProps {
   visible?: boolean
 }
 
-const props = withDefaults(defineProps<LayerProps>(), {
-  visible: undefined
-})
+const props = withDefaults(
+  defineProps<
+    LayerProps & {
+      register?: (actions: CreateLayerActions<SkyLayer>, map: Map) => any
+    }
+  >(),
+  {
+    visible: undefined
+  }
+)
 const emit = defineEmits<{
-  (e: keyof MapLayerEventType, ev: any): void
+  (e: keyof MapLayerEventType, ev: any): any
+  (e: 'register', actions: CreateLayerActions<SkyLayer>, map: Map): any
   (e: 'click', ev: MapLayerMouseEvent): any
   (e: 'dblclick', ev: MapLayerMouseEvent): any
   (e: 'mousedown', ev: MapLayerMouseEvent): any
@@ -71,7 +82,11 @@ const {
   maxzoom: props.maxzoom,
   minzoom: props.minzoom,
   metadata: props.metadata,
-  sourceLayer: props.sourceLayer
+  sourceLayer: props.sourceLayer,
+  register: (actions, map) => {
+    props.register?.(actions, map)
+    emit('register', actions, map)
+  }
 })
 MapboxLayerEvents.map(eventName => {
   useLayerEventListener({

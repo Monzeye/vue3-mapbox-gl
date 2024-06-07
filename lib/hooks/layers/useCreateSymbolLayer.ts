@@ -5,12 +5,14 @@ import type {
   SymbolLayer,
   SymbolLayout,
   SymbolPaint,
-  SymbolLayerStyle
+  SymbolLayerStyle,
+  AnySourceImpl
 } from 'mapbox-gl'
-import type { CreateLayerActions, Nullable, ShallowRefOrNo } from '@/types'
+import type { CreateLayerActions, Nullable } from '@/types'
 import { useCreateLayer } from '@/hooks/layers/useCreateLayer'
 import { filterStylePropertiesByKeys } from '@/helpers/layerUtils'
 import { MapboxLayerType } from '@/enums/MapboxLayerEnum'
+import type { MaybeRef } from 'vue'
 
 type Layer = SymbolLayer
 type Layout = SymbolLayout
@@ -87,8 +89,8 @@ const layoutKeys: (keyof Layout)[] = [
 ]
 
 interface CreateSymbolLayerProps {
-  map: ShallowRefOrNo<Nullable<Map>>
-  source: ShallowRefOrNo<string | AnySourceData | object | null>
+  map: MaybeRef<Nullable<Map>>
+  source: MaybeRef<string | AnySourceImpl | AnySourceData | object | null>
   renderingMode?: string
   slot?: 'bottom' | 'middle' | 'top'
   id?: string
