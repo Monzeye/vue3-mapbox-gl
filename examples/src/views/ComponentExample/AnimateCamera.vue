@@ -31,21 +31,22 @@ useChainCamera({
       lngLat: [138.72649, 35.33974],
       lookAtLngLat: [138.73036, 35.36197],
       altitude: 6000.0,
-      duration: 20000
+      duration: 20000,
+      easing: 'easeInOutQuad'
     },
     {
       lngLat: [138.72623, 35.31977],
       lookAtLngLat: [138.73036, 35.36197],
       altitude: 6000,
       duration: 15000,
-      easing: 'easeOutCubic'
+      easing: 'easeInOutQuad'
     },
     {
       lngLat: [138.73375, 35.41914],
       lookAtLngLat: [138.73036, 35.36197],
       altitude: 7000,
       duration: 15000,
-      easing: 'easeInOutCubic'
+      easing: 'easeInOutQuad'
     }
   ]
 })
